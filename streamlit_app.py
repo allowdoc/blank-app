@@ -149,9 +149,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
 
     await update.message.reply_text(
-        "Welcome to CryptBot!"
-        "Use the buttons below to interact with the bot"
-        "Contact admin for premium access.",
+        "Welcome to CryptBot!",
+        "Use the buttons below to interact with the bot",
+
         reply_markup=reply_markup
     )
 
@@ -165,8 +165,7 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
         await check(update, context)
     elif text == ' Purchase':
         await purchase(update, context)
-    elif text == ' Need Help':
-        await contact(update, context)
+ 
     elif text == ' Cancel Job':
         await cancel(update, context)
     else:
@@ -481,7 +480,7 @@ def main():
         application = Application.builder().token(API_TOKEN).build()
 
         # Add handlers for the new commands
-        application.add_handler(CommandHandler('contact', contact))
+        
         application.add_handler(CommandHandler('purchase', purchase))
 
         # Add premium management conversation handler
