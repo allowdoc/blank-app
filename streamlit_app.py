@@ -28,11 +28,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Bot credentials
+# Bot credentials - Using hardcoded values as requested
 API_TOKEN = '8047738165:AAGAU1InodqlYNYxS_ObzoPBWZyqR4FnxiI'
 ADMIN_ID = 5648376510
 
-# MongoDB setup
+# MongoDB setup - Using hardcoded connection string
 MONGO_URI = 'mongodb+srv://allowdoctor:T3OtPNZe3wVgGzhQ@tgbotwd.u6kjv.mongodb.net/?retryWrites=true&w=majority&appName=Tgbotwd'
 
 # Initialize MongoDB client
@@ -40,12 +40,14 @@ try:
     client = MongoClient(MONGO_URI)
     db = client['cryptbot']
     users_collection = db['premium_users']
+    mongo_connected = True
     logger.info("MongoDB connected successfully")
 except Exception as e:
     logger.error(f"MongoDB connection failed: {e}")
     client = None
     db = None
     users_collection = None
+    mongo_connected = False
 
 # Ensure required directories exist
 os.makedirs("downloads", exist_ok=True)
@@ -69,7 +71,7 @@ bot_application = None
 
 # Database functions
 async def is_premium_user(user_id: int) -> bool:
-    if not users_collection:
+    if not mongo_connected or users_collection is None:
         return False
     
     try:
@@ -95,7 +97,7 @@ async def is_premium_user(user_id: int) -> bool:
         return False
 
 async def add_premium_user(user_id: int, duration_days: int):
-    if not users_collection:
+    if not mongo_connected or users_collection is None:
         return
     
     try:
@@ -117,7 +119,7 @@ async def add_premium_user(user_id: int, duration_days: int):
         logger.error(f"Error in add_premium_user: {e}")
 
 async def get_premium_expiry(user_id: int) -> Optional[datetime]:
-    if not users_collection:
+    if not mongo_connected or users_collection is None:
         return None
     
     try:
@@ -505,7 +507,7 @@ def main():
             # Show bot info
             st.markdown("**Bot Username:** @YourBotUsername")
             st.markdown("**Bot Status:** Active")
-            st.markdown("**Database:** Connected" if users_collection else "**Database:** Disconnected")
+            st.markdown("**Database:** Connected" if mongo_connected else "**Database:** Disconnected")
         else:
             st.warning("⚠️ Bot is not running")
             st.info("Click the button below to start your Telegram bot.")
@@ -567,7 +569,7 @@ def main():
         st.markdown("**Admin ID:** " + ("✅ Set" if ADMIN_ID else "❌ Missing"))
     
     with col2:
-        st.markdown("**MongoDB:** " + ("✅ Connected" if users_collection else "❌ Disconnected"))
+        st.markdown("**MongoDB:** " + ("✅ Connected" if mongo_connected else "❌ Disconnected"))
         st.markdown("**Directories:** ✅ Created")
     
     st.markdown("---")
