@@ -1,8 +1,7 @@
 import streamlit as st
 import subprocess
 import threading
-
-# --- Paste your troy.py code here -
+import asyncio
 import os
 import random
 import string
@@ -26,7 +25,8 @@ from cryptography.utils import CryptographyDeprecationWarning
 warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
 
 # Set system stdout to use UTF-8 encoding
-sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # Configure logging
 logging.basicConfig(
@@ -40,8 +40,6 @@ API_TOKEN = '8047738165:AAGAU1InodqlYNYxS_ObzoPBWZyqR4FnxiI'
 ADMIN_ID = 5648376510
 
 # MongoDB setup
-
-
 MONGO_URI = 'mongodb+srv://allowdoctor:T3OtPNZe3wVgGzhQ@tgbotwd.u6kjv.mongodb.net/?retryWrites=true&w=majority&appName=Tgbotwd'
 client = MongoClient(MONGO_URI)
 db = client['cryptbot']
@@ -98,7 +96,6 @@ async def is_premium_user(user_id: int) -> bool:
         return False
 
 async def add_premium_user(user_id: int, duration_days: int):
-
     try:
         expiry_date = datetime.now(timezone.utc) + timedelta(days=duration_days)
         users_collection.update_one(
@@ -106,7 +103,7 @@ async def add_premium_user(user_id: int, duration_days: int):
             {
                 '$set': {
                     'user_id': user_id,
-                    'expiry_date': expiry_date,  # Ensure this is timezone-aware
+                    'expiry_date': expiry_date,
                     'added_by': ADMIN_ID,
                     'added_at': datetime.now(timezone.utc)
                 }
@@ -118,7 +115,6 @@ async def add_premium_user(user_id: int, duration_days: int):
         logger.error(f"Error in add_premium_user: {e}")
 
 async def get_premium_expiry(user_id: int) -> Optional[datetime]:
-
     try:
         user = users_collection.find_one({'user_id': user_id})
         if user:
@@ -132,46 +128,41 @@ async def get_premium_expiry(user_id: int) -> Optional[datetime]:
         return None
 
 # Command handlers
-# Command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
     if 'processing' in context.user_data and context.user_data['processing']:
-        await update.message.reply_text(" A crypt process is already running. Please wait until it completes or cancel it.")
+        await update.message.reply_text("🔄 A crypt process is already running. Please wait until it completes or cancel it.")
         return
 
     # Define the custom keyboard layout with emojis
     keyboard = [
-        [' Start Encrypt', ' Subscription'],
-        [' Purchase', ' Need Help'],
-        [' Cancel Job']  # New 5th button
+        ['🔐 Start Encrypt', '📋 Subscription'],
+        ['💳 Purchase', '❓ Need Help'],
+        ['❌ Cancel Job']
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
 
     await update.message.reply_text(
-        "Welcome to CryptBot!",
+        "🤖 Welcome to CryptBot!\n\n"
         "Use the buttons below to interact with the bot",
-
         reply_markup=reply_markup
     )
 
 async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
     text = update.message.text
 
-    if text == ' Start Encrypt':
+    if text == '🔐 Start Encrypt':
         await crypt(update, context)
-    elif text == ' Subscription':
+    elif text == '📋 Subscription':
         await check(update, context)
-    elif text == ' Purchase':
+    elif text == '💳 Purchase':
         await purchase(update, context)
- 
-    elif text == ' Cancel Job':
+    elif text == '❌ Cancel Job':
         await cancel(update, context)
     else:
-        await update.message.reply_text("Invalid option. Please use the menu buttons.")
+        await update.message.reply_text("❌ Invalid option. Please use the menu buttons.")
+
 # Cancel command handler
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     user_id = update.effective_user.id
     
     # Clean up any stored files
@@ -181,22 +172,21 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
     context.user_data['processing'] = False
     await update.message.reply_text(
-        "Operation cancelled. Use /crypt to start again."
+        "❌ Operation cancelled. Use /crypt to start again."
     )
     return ConversationHandler.END
+
 # Admin command handlers
 async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     user_id = update.effective_user.id
     if user_id != ADMIN_ID:
-        await update.message.reply_text(" You are not authorized to use this command.")
+        await update.message.reply_text("🚫 You are not authorized to use this command.")
         return ConversationHandler.END
     
-    await update.message.reply_text("Please enter the chat ID of the user you want to give premium access to:")
+    await update.message.reply_text("👤 Please enter the chat ID of the user you want to give premium access to:")
     return ADMIN_CHAT_ID
 
 async def admin_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-  
     try:
         chat_id = int(update.message.text)
         context.user_data['premium_chat_id'] = chat_id
@@ -208,16 +198,15 @@ async def admin_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.message.reply_text(
-            "Select premium access duration:",
+            "⏰ Select premium access duration:",
             reply_markup=reply_markup
         )
         return ADMIN_DURATION
     except ValueError:
-        await update.message.reply_text("Invalid chat ID. Please enter a valid number:")
+        await update.message.reply_text("❌ Invalid chat ID. Please enter a valid number:")
         return ADMIN_CHAT_ID
 
 async def admin_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
     query = update.callback_query
     await query.answer()
     
@@ -228,23 +217,22 @@ async def admin_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     keyboard = [
         [
-            InlineKeyboardButton(" Confirm", callback_data="confirm_yes"),
-            InlineKeyboardButton(" Cancel", callback_data="confirm_no")
+            InlineKeyboardButton("✅ Confirm", callback_data="confirm_yes"),
+            InlineKeyboardButton("❌ Cancel", callback_data="confirm_no")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.edit_message_text(
-        f"Confirm Premium Access"
-        f"User ID: {chat_id}"
-        f"Duration: {duration_data['text']}"
+        f"✅ Confirm Premium Access\n\n"
+        f"👤 User ID: {chat_id}\n"
+        f"⏰ Duration: {duration_data['text']}\n\n"
         f"Add this user as premium?",
         reply_markup=reply_markup
     )
     return ADMIN_CONFIRM
 
 async def admin_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
- 
     query = update.callback_query
     await query.answer()
     
@@ -254,45 +242,42 @@ async def admin_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await add_premium_user(chat_id, duration_days)
         await query.edit_message_text(
-            f" Premium access granted!"
-            f"User ID: {chat_id}"
-            f"Duration: {duration_days} days"
-            f"Expiry: {(datetime.now(timezone.utc) + timedelta(days=duration_days)).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            f"✅ Premium access granted!\n\n"
+            f"👤 User ID: {chat_id}\n"
+            f"⏰ Duration: {duration_days} days\n"
+            f"📅 Expiry: {(datetime.now(timezone.utc) + timedelta(days=duration_days)).strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
     else:
-        await query.edit_message_text(" Operation cancelled.")
+        await query.edit_message_text("❌ Operation cancelled.")
     
     return ConversationHandler.END
 
 async def crypt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-   
     user_id = update.effective_user.id
     
     if 'processing' in context.user_data and context.user_data['processing']:
-        await update.message.reply_text("A crypt process is already running. Please wait until it completes or cancel it.")
+        await update.message.reply_text("🔄 A crypt process is already running. Please wait until it completes or cancel it.")
         return ConversationHandler.END
 
     if not await is_premium_user(user_id) and user_id != ADMIN_ID:
         await update.message.reply_text(
-            " Premium Access Required"
-            "You need premium access to use this command."
+            "🔒 Premium Access Required\n\n"
+            "You need premium access to use this command.\n"
             "Please contact the administrator to purchase a subscription."
         )
         return ConversationHandler.END
     
     await update.message.reply_text(
-        " mock crypt."
+        "🔐 Mock crypt process started.\n\n"
         "Send /cancel to stop the process."
     )
     context.user_data['processing'] = True
     return WAITING_FOR_FILE
 
-
 # Check command handler
 async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
     if 'processing' in context.user_data and context.user_data['processing']:
-        await update.message.reply_text(" A crypt process is already running. Please wait until it completes or cancel it.")
+        await update.message.reply_text("🔄 A crypt process is already running. Please wait until it completes or cancel it.")
         return
 
     user_id = update.effective_user.id
@@ -300,46 +285,43 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     if expiry_date:
         await update.message.reply_text(
-            f" Your premium subscription is valid until {expiry_date.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            f"✅ Your premium subscription is valid until {expiry_date.strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
     else:
-        await update.message.reply_text(" You do not have a valid premium subscription.")
+        await update.message.reply_text("❌ You do not have a valid premium subscription.")
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
     try:
         logger.error(f'Error: {context.error} caused by update: {update}')
         if update and update.message:
             await update.message.reply_text(
-                " An error occurred. Please try again or use /crypt to start over."
+                "❌ An error occurred. Please try again or use /crypt to start over."
             )
     except Exception as e:
         logger.error(f"Error in error handler: {e}")
 
-
 # Command handler for 'purchase'
 async def purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
- 
     keyboard = [
-        [InlineKeyboardButton(" Purchase", url="https://t.me/adbosts")]
+        [InlineKeyboardButton("💳 Purchase", url="https://t.me/adbosts")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "To purchase premium access, click the button below:",
+        "💳 To purchase premium access, click the button below:",
         reply_markup=reply_markup
     )
 
-def main():
-
-    print("Starting bot...")
+# Bot runner function
+def run_bot():
+    """Run the Telegram bot in a separate thread with proper event loop handling"""
     try:
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         # Create the Application
         application = Application.builder().token(API_TOKEN).build()
-
-        # Add handlers for the new commands
-        
-        application.add_handler(CommandHandler('purchase', purchase))
 
         # Add premium management conversation handler
         admin_handler = ConversationHandler(
@@ -349,47 +331,121 @@ def main():
                 ADMIN_DURATION: [CallbackQueryHandler(admin_duration, pattern=r'^duration_')],
                 ADMIN_CONFIRM: [CallbackQueryHandler(admin_confirm, pattern=r'^confirm_')]
             },
-            fallbacks=[CommandHandler('cancel', cancel)],  # Add cancel as a fallback
-            per_message=False
+            fallbacks=[CommandHandler('cancel', cancel)],
+            per_message=True  # Changed to True to avoid the warning
         )
 
         # Add the main conversation handler for the encryption process
         conv_handler = ConversationHandler(
             entry_points=[
-                CommandHandler('crypt', crypt),  # Handle /crypt command
-                MessageHandler(filters.Text([' Start Encrypt']), crypt)  # Handle menu button
+                CommandHandler('crypt', crypt),
+                MessageHandler(filters.Text(['🔐 Start Encrypt']), crypt)
             ],
             states={
-                
-                
+                WAITING_FOR_FILE: [MessageHandler(filters.Document.ALL, lambda u, c: None)],
             },
-            fallbacks=[CommandHandler('cancel', cancel)],  # Handle /cancel command
-            per_message=False
+            fallbacks=[CommandHandler('cancel', cancel)],
+            per_message=True  # Changed to True to avoid the warning
         )
 
         # Add all handlers
         application.add_handler(admin_handler)
         application.add_handler(conv_handler)
-        application.add_handler(CommandHandler('start', start))  # Add start command handler
+        application.add_handler(CommandHandler('start', start))
         application.add_handler(CommandHandler('check', check))
-        application.add_handler(CommandHandler('cancel', cancel))  # Add cancel command handler
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_buttons))  # Add menu button handler
+        application.add_handler(CommandHandler('cancel', cancel))
+        application.add_handler(CommandHandler('purchase', purchase))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_buttons))
         application.add_error_handler(error_handler)
 
         # Start the bot
-        print("Bot is running. Press Ctrl+C to stop.")
+        logger.info("Bot is starting...")
         application.run_polling(allowed_updates=Update.ALL_TYPES)
-
+        
     except Exception as e:
-        logger.critical(f"Critical error in main: {e}")
-        
-        
-if __name__ == '__main__':
+        logger.error(f"Critical error in bot runner: {e}")
 
-    st.title("Demo Streamlit App")
-    st.write("This is a demo text shown on the desktop UI.")
-    st.info("`troy.py` is running in the background.")
-    main()                
-
-# --- End of troy.py content -
 # Streamlit UI
+def main():
+    st.set_page_config(
+        page_title="Telegram Bot Dashboard",
+        page_icon="🤖",
+        layout="wide"
+    )
+    
+    st.title("🤖 Telegram Bot Dashboard")
+    st.markdown("---")
+    
+    # Initialize session state
+    if 'bot_started' not in st.session_state:
+        st.session_state.bot_started = False
+    if 'bot_thread' not in st.session_state:
+        st.session_state.bot_thread = None
+    
+    # Bot status
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        if st.session_state.bot_started:
+            st.success("✅ Bot is running!")
+            st.info("Your Telegram bot is active and ready to receive messages.")
+        else:
+            st.warning("⚠️ Bot is not running")
+            st.info("Click the button below to start your Telegram bot.")
+    
+    with col2:
+        if not st.session_state.bot_started:
+            if st.button("🚀 Start Bot", type="primary"):
+                try:
+                    # Start bot in a separate thread
+                    bot_thread = threading.Thread(target=run_bot, daemon=True)
+                    bot_thread.start()
+                    st.session_state.bot_thread = bot_thread
+                    st.session_state.bot_started = True
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to start bot: {e}")
+        else:
+            if st.button("🛑 Stop Bot", type="secondary"):
+                st.session_state.bot_started = False
+                st.rerun()
+    
+    st.markdown("---")
+    
+    # Bot Information
+    st.subheader("📋 Bot Information")
+    
+    info_col1, info_col2 = st.columns(2)
+    
+    with info_col1:
+        st.markdown("**Bot Features:**")
+        st.markdown("- 🔐 File Encryption")
+        st.markdown("- 👥 Premium User Management")
+        st.markdown("- 📊 Subscription Tracking")
+        st.markdown("- 🔧 Admin Controls")
+    
+    with info_col2:
+        st.markdown("**Bot Commands:**")
+        st.markdown("- `/start` - Start the bot")
+        st.markdown("- `/crypt` - Begin encryption process")
+        st.markdown("- `/check` - Check subscription status")
+        st.markdown("- `/admin` - Admin panel (admin only)")
+        st.markdown("- `/cancel` - Cancel current operation")
+    
+    st.markdown("---")
+    
+    # Logs section
+    st.subheader("📜 Bot Logs")
+    
+    if st.session_state.bot_started:
+        st.info("Bot is running. Check your terminal/console for detailed logs.")
+    else:
+        st.warning("Start the bot to see logs.")
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("**Note:** This bot is running on Streamlit Community Cloud. "
+                "Make sure your bot token and MongoDB credentials are properly configured.")
+
+if __name__ == '__main__':
+    main()
