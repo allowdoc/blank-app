@@ -132,7 +132,7 @@ async def get_premium_expiry(user_id: int) -> Optional[datetime]:
         logger.error(f"Error in get_premium_expiry: {e}")
         return None
 
-# Command handlers
+
 # Command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
