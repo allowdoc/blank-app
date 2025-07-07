@@ -63,9 +63,6 @@ ADMIN_ID = 5648376510
 MONGO_URI = 'mongodb+srv://allowdoctor:T3OtPNZe3wVgGzhQ@tgbotwd.u6kjv.mongodb.net/?retryWrites=true&w=majority&appName=Tgbotwd'
 
 
-# Replace the placeholder strings 'YOUR_ACTUAL_...' with your real credentials!
-
-
 # --- Conversation states and Duration options ---
 WAITING_FOR_FILE, CONFIRM_FILE = range(2)
 ADMIN_CHAT_ID, ADMIN_DURATION, ADMIN_CONFIRM = range(2, 5)
@@ -80,6 +77,9 @@ DURATION_OPTIONS = {
 
 # Thread pool for CPU-intensive tasks (shared resource)
 executor = ThreadPoolExecutor(max_workers=4)
+
+# Global cleanup task reference
+cleanup_task_ref = None
 
 
 # --- DEFINE CLASSES *BEFORE* THEY ARE INSTANTIATED ---
@@ -252,8 +252,7 @@ except Exception as e:
 
 session_manager = UserSessionManager() # Uses the hardcoded variables internally via handlers
 
-# --- BOT HANDLER FUNCTIONS --- (These remain the same, they use the global db_manager and session_manager)
-# ... (start, handle_menu_buttons, crypt, handle_file_upload, cancel, check, purchase, contact, admin, etc.)
+# --- BOT HANDLER FUNCTIONS ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Start command with quick response."""
@@ -366,7 +365,6 @@ async def handle_file_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
         #    return ConversationHandler.END
         # --- End of actual file processing logic placeholder ---
 
-
         await asyncio.sleep(5) # Simulate time - REPLACE THIS
 
         await processing_msg.edit_text(
@@ -467,7 +465,7 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         parse_mode=ParseMode.MARKDOWN
     )
 
-# Admin handlers (simplified for space)
+# Admin handlers
 async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Admin command."""
     user_id = update.effective_user.id
@@ -589,6 +587,8 @@ async def cleanup_task():
 # Helper function to run the bot in a separate thread
 def run_bot_polling():
     """Builds and runs the Telegram bot application in its own asyncio loop within a thread."""
+    global cleanup_task_ref
+    
     logger.info("Setting up asyncio loop for Telegram bot thread...")
     # Create a new event loop for this thread
     loop = asyncio.new_event_loop()
@@ -600,7 +600,8 @@ def run_bot_polling():
         # Create application using the hardcoded API_TOKEN
         application = Application.builder().token(API_TOKEN).build()
 
-        # --- Add Handlers (Keep these as they were, they will be added to the app running in this loop) ---
+        # --- Add Handlers ---
+        # Fixed: Removed per_message=True to avoid warnings
         admin_handler = ConversationHandler(
             entry_points=[CommandHandler('admin', admin)],
             states={
@@ -608,8 +609,7 @@ def run_bot_polling():
                 ADMIN_DURATION: [CallbackQueryHandler(admin_duration, pattern=r'^duration_')],
                 ADMIN_CONFIRM: [CallbackQueryHandler(admin_confirm, pattern=r'^confirm_')]
             },
-            fallbacks=[CommandHandler('cancel', cancel)],
-            per_message=True
+            fallbacks=[CommandHandler('cancel', cancel)]
         )
 
         conv_handler = ConversationHandler(
@@ -622,8 +622,7 @@ def run_bot_polling():
                     MessageHandler(filters.Document.ALL, handle_file_upload),
                 ]
             },
-            fallbacks=[CommandHandler('cancel', cancel)],
-            per_message=True
+            fallbacks=[CommandHandler('cancel', cancel)]
         )
 
         application.add_handler(admin_handler)
@@ -636,29 +635,28 @@ def run_bot_polling():
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_buttons))
         application.add_error_handler(error_handler)
 
-        # --- Post Init/Shutdown Hooks (Ensure these are defined *before* building the app) ---
-        # These were already defined correctly in the previous step, just ensure they are above this function
-
+        # --- Post Init/Shutdown Hooks ---
         async def post_init(app):
+            global cleanup_task_ref
             logger.info("Bot post_init hook running in bot loop...")
-            # Schedule cleanup task within THIS loop (the bot's loop)
-            app.cleanup_task = asyncio.create_task(cleanup_task())
+            # Store cleanup task reference globally instead of on app object
+            cleanup_task_ref = asyncio.create_task(cleanup_task())
             logger.info("Cleanup task scheduled in bot loop.")
 
         application.post_init = post_init
 
         async def post_shutdown(app):
-             logger.info("Bot post_shutdown hook running in bot loop...")
-             if hasattr(app, 'cleanup_task') and app.cleanup_task:
-                 app.cleanup_task.cancel()
-                 try:
-                     await app.cleanup_task
-                 except asyncio.CancelledError:
-                     logger.info("Cleanup task cancelled successfully.")
-             logger.info("Bot finished shutting down.")
+            global cleanup_task_ref
+            logger.info("Bot post_shutdown hook running in bot loop...")
+            if cleanup_task_ref:
+                cleanup_task_ref.cancel()
+                try:
+                    await cleanup_task_ref
+                except asyncio.CancelledError:
+                    logger.info("Cleanup task cancelled successfully.")
+            logger.info("Bot finished shutting down.")
 
         application.post_shutdown = post_shutdown
-
 
         logger.info("Bot application built. Running polling inside loop...")
         # Run the application's polling async method until it completes
@@ -674,7 +672,7 @@ def run_bot_polling():
 
 
 # --- Main Execution Block ---
-# This remains the same, it starts the above function in a new thread
+# Global variables to track bot thread state
 _bot_thread_started = False
 _bot_thread = None
 
@@ -692,23 +690,4 @@ if __name__ == '__main__':
         logger.info("Bot thread is already running.")
 
     st.write("Bot backend is running in a separate thread.")
-    st.write("Check your Telegram bot for functionality.") # Added helpful message
-
-
-_bot_thread_started = False
-_bot_thread = None
-
-# --- Main Execution Block ---
-if __name__ == '__main__':
-    logger.info("Streamlit script started.")
-
-    if not _bot_thread_started:
-        logger.info("Starting bot thread...")
-        _bot_thread = threading.Thread(target=run_bot_polling, daemon=True)
-        _bot_thread.start()
-        _bot_thread_started = True
-        logger.info("Bot thread started.")
-    else:
-        logger.info("Bot thread is already running.")
-
-    st.write("Bot backend is running in a separate thread.")
+    st.write("Check your Telegram bot for functionality.")
