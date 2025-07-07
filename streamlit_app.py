@@ -99,7 +99,7 @@ async def is_premium_user(user_id: int) -> bool:
         return False
 
 async def add_premium_user(user_id: int, duration_days: int):
-    """Add or update premium user."""
+
     try:
         expiry_date = datetime.now(timezone.utc) + timedelta(days=duration_days)
         users_collection.update_one(
@@ -119,7 +119,7 @@ async def add_premium_user(user_id: int, duration_days: int):
         logger.error(f"Error in add_premium_user: {e}")
 
 async def get_premium_expiry(user_id: int) -> Optional[datetime]:
-    """Get premium expiry date for a user."""
+
     try:
         user = users_collection.find_one({'user_id': user_id})
         if user:
@@ -135,7 +135,7 @@ async def get_premium_expiry(user_id: int) -> Optional[datetime]:
 # Command handlers
 # Command handlers
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Start command handler."""
+
     if 'processing' in context.user_data and context.user_data['processing']:
         await update.message.reply_text("⚠️ A crypt process is already running. Please wait until it completes or cancel it.")
         return
@@ -156,7 +156,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle menu button clicks."""
+
     text = update.message.text
 
     if text == '🔐 Start Encrypt':
@@ -173,7 +173,7 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("Invalid option. Please use the menu buttons.")
 # Cancel command handler
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Cancel command handler."""
+
     user_id = update.effective_user.id
     
     # Clean up any stored files
@@ -188,7 +188,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 # Admin command handlers
 async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Admin command handler."""
+
     user_id = update.effective_user.id
     if user_id != ADMIN_ID:
         await update.message.reply_text("⚠️ You are not authorized to use this command.")
@@ -198,7 +198,7 @@ async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ADMIN_CHAT_ID
 
 async def admin_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle admin chat ID input."""
+  
     try:
         chat_id = int(update.message.text)
         context.user_data['premium_chat_id'] = chat_id
@@ -219,7 +219,7 @@ async def admin_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return ADMIN_CHAT_ID
 
 async def admin_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle admin duration selection."""
+
     query = update.callback_query
     await query.answer()
     
@@ -246,7 +246,7 @@ async def admin_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     return ADMIN_CONFIRM
 
 async def admin_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle admin confirmation."""
+ 
     query = update.callback_query
     await query.answer()
     
@@ -267,7 +267,7 @@ async def admin_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return ConversationHandler.END
 
 async def crypt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Crypt command handler."""
+   
     user_id = update.effective_user.id
     
     if 'processing' in context.user_data and context.user_data['processing']:
@@ -290,7 +290,7 @@ async def crypt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return WAITING_FOR_FILE
 
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle uploaded file."""
+
     try:
         file = update.message.document
 
@@ -326,7 +326,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         return ConversationHandler.END
 
 async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle file confirmation."""
+
     query = update.callback_query
     await query.answer()
 
@@ -433,7 +433,7 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 # Check command handler
 async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Check command handler."""
+
     if 'processing' in context.user_data and context.user_data['processing']:
         await update.message.reply_text("⚠️ A crypt process is already running. Please wait until it completes or cancel it.")
         return
@@ -449,7 +449,7 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("⚠️ You do not have a valid premium subscription.")
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Error handler."""
+
     try:
         logger.error(f'Error: {context.error} caused by update: {update}')
         if update and update.message:
@@ -460,7 +460,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.error(f"Error in error handler: {e}")
 
 def encrypt_bin_file(file_path: str) -> str:
-    """Encrypt the .bin file using AES encryption."""
+
     key = "MyFixedEncryptionKey".encode('utf-8')
 
     if len(key) > 16:
@@ -487,14 +487,14 @@ def encrypt_bin_file(file_path: str) -> str:
     return encrypted_file_path
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Contact command handler."""
+
     await update.message.reply_text(
         "For any inquiries or support, please contact us at: @Nexcyte, @adbosts"
     )
 
 # Command handler for 'purchase'
 async def purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Purchase command handler."""
+ 
     keyboard = [
         [InlineKeyboardButton("🛒 Purchase", url="https://t.me/adbosts")]
     ]
@@ -506,7 +506,7 @@ async def purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 def main():
-    """Main function to start the bot."""
+
     print("Starting bot...")
     try:
         # Create the Application
@@ -560,7 +560,7 @@ def main():
         
         
 if __name__ == '__main__':
-    main()        
+    main()                
 """
 # --- End of troy.py content ---
 
