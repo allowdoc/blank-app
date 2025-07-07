@@ -137,20 +137,20 @@ async def get_premium_expiry(user_id: int) -> Optional[datetime]:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if 'processing' in context.user_data and context.user_data['processing']:
-        await update.message.reply_text("⚠️ A crypt process is already running. Please wait until it completes or cancel it.")
+        await update.message.reply_text(" A crypt process is already running. Please wait until it completes or cancel it.")
         return
 
     # Define the custom keyboard layout with emojis
     keyboard = [
-        ['🔐 Start Encrypt', '📅 Subscription'],
-        ['🛒 Purchase', '🆘 Need Help'],
-        ['❌ Cancel Job']  # New 5th button
+        [' Start Encrypt', ' Subscription'],
+        [' Purchase', ' Need Help'],
+        [' Cancel Job']  # New 5th button
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
 
     await update.message.reply_text(
-        "Welcome to CryptBot! 🔐\n\n"
-        "Use the buttons below to interact with the bot.\n"
+        "Welcome to CryptBot!"
+        "Use the buttons below to interact with the bot"
         "Contact admin for premium access.",
         reply_markup=reply_markup
     )
@@ -159,15 +159,15 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     text = update.message.text
 
-    if text == '🔐 Start Encrypt':
+    if text == ' Start Encrypt':
         await crypt(update, context)
-    elif text == '📅 Subscription':
+    elif text == ' Subscription':
         await check(update, context)
-    elif text == '🛒 Purchase':
+    elif text == ' Purchase':
         await purchase(update, context)
-    elif text == '🆘 Need Help':
+    elif text == ' Need Help':
         await contact(update, context)
-    elif text == '❌ Cancel Job':
+    elif text == ' Cancel Job':
         await cancel(update, context)
     else:
         await update.message.reply_text("Invalid option. Please use the menu buttons.")
@@ -191,7 +191,7 @@ async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     user_id = update.effective_user.id
     if user_id != ADMIN_ID:
-        await update.message.reply_text("⚠️ You are not authorized to use this command.")
+        await update.message.reply_text(" You are not authorized to use this command.")
         return ConversationHandler.END
     
     await update.message.reply_text("Please enter the chat ID of the user you want to give premium access to:")
@@ -230,16 +230,16 @@ async def admin_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     keyboard = [
         [
-            InlineKeyboardButton("✅ Confirm", callback_data="confirm_yes"),
-            InlineKeyboardButton("❌ Cancel", callback_data="confirm_no")
+            InlineKeyboardButton(" Confirm", callback_data="confirm_yes"),
+            InlineKeyboardButton(" Cancel", callback_data="confirm_no")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.edit_message_text(
-        f"📝 Confirm Premium Access\n\n"
-        f"User ID: {chat_id}\n"
-        f"Duration: {duration_data['text']}\n\n"
+        f"Confirm Premium Access"
+        f"User ID: {chat_id}"
+        f"Duration: {duration_data['text']}"
         f"Add this user as premium?",
         reply_markup=reply_markup
     )
@@ -256,13 +256,13 @@ async def admin_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         
         await add_premium_user(chat_id, duration_days)
         await query.edit_message_text(
-            f"✅ Premium access granted!\n\n"
-            f"User ID: {chat_id}\n"
-            f"Duration: {duration_days} days\n"
+            f" Premium access granted!"
+            f"User ID: {chat_id}"
+            f"Duration: {duration_days} days"
             f"Expiry: {(datetime.now(timezone.utc) + timedelta(days=duration_days)).strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
     else:
-        await query.edit_message_text("❌ Operation cancelled.")
+        await query.edit_message_text(" Operation cancelled.")
     
     return ConversationHandler.END
 
@@ -271,19 +271,19 @@ async def crypt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
     
     if 'processing' in context.user_data and context.user_data['processing']:
-        await update.message.reply_text("⚠️ A crypt process is already running. Please wait until it completes or cancel it.")
+        await update.message.reply_text("A crypt process is already running. Please wait until it completes or cancel it.")
         return ConversationHandler.END
 
     if not await is_premium_user(user_id) and user_id != ADMIN_ID:
         await update.message.reply_text(
-            "⚠️ Premium Access Required\n\n"
-            "You need premium access to use this command.\n"
+            " Premium Access Required"
+            "You need premium access to use this command."
             "Please contact the administrator to purchase a subscription."
         )
         return ConversationHandler.END
     
     await update.message.reply_text(
-        "📤 mock crypt.\n"
+        " mock crypt."
         "Send /cancel to stop the process."
     )
     context.user_data['processing'] = True
@@ -295,7 +295,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         file = update.message.document
 
         if not file.file_name.lower().endswith('.exe'):
-            await update.message.reply_text("❌ File format not supported. Please upload a valid .exe file.")
+            await update.message.reply_text(" File format not supported. Please upload a valid .exe file.")
             context.user_data['processing'] = False
             return ConversationHandler.END
 
@@ -306,8 +306,8 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         await new_file.download_to_drive(file_path)
 
         keyboard = [
-            [InlineKeyboardButton("✅ Yes", callback_data="yes")],
-            [InlineKeyboardButton("❌ No", callback_data="no")]
+            [InlineKeyboardButton(" Yes", callback_data="yes")],
+            [InlineKeyboardButton(" No", callback_data="no")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -344,18 +344,18 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             
             # Show animated text while processing
             await query.edit_message_text(
-                "🔄 Processing your file...\n"
-                "🟩🟩🟩⬛⬛⬛⬛⬛⬛⬛ (30%)"
+                " Processing your file..."
+                " (30%)"
             )
             time.sleep(2)  # Simulate processing delay
             await query.edit_message_text(
-                "🔄 Processing your file...\n"
-                "🟩🟩🟩🟩🟩⬛⬛⬛⬛⬛ (50%)"
+                " Processing your file..."
+                "(50%)"
             )
             time.sleep(2)  # Simulate processing delay
             await query.edit_message_text(
-                "🔄 Processing your file...\n"
-                "🟩🟩🟩🟩🟩🟩🟩🟩⬛⬛ (80%)"
+                " Processing your file..."
+                "(80%)"
             )
             time.sleep(2)  # Simulate processing delay
 
@@ -372,7 +372,7 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     # Extract the password from the headers
                     password = response.headers.get('X-Password')
                     if not password:
-                        await query.edit_message_text("❌ Invalid response from the server. Missing password in headers.")
+                        await query.edit_message_text(" Invalid response from the server. Missing password in headers.")
                         context.user_data['processing'] = False
                         return ConversationHandler.END
 
@@ -383,8 +383,8 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
                     # Show "Processing 100% completed" and wait for 30 seconds
                     await query.edit_message_text(
-                        "✅ Processing Completed!\n"
-                        "🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩 (100%)\n"
+                        " Processing Completed!"
+                        "(100%)"
                         "Please wait while we finalize the file..."
                     )
                     time.sleep(5)  # Wait for 5 seconds to ensure the 7zip file is fully generated
@@ -393,25 +393,25 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                     await query.message.reply_document(
                         document=response.content,
                         filename=archive_filename,
-                        caption=f"✅ File processed successfully! \n🔑 Password: {password}"
+                        caption=f" File processed successfully!  Password: {password}"
                     )
 
                     # Mark process as finished
                     context.user_data['processing'] = False
                     return ConversationHandler.END
                 else:
-                    await query.edit_message_text("❌ Error occurred while processing the file.")
+                    await query.edit_message_text(" Error occurred while processing the file.")
                     context.user_data['processing'] = False
                     return ConversationHandler.END
 
             except requests.exceptions.Timeout:
-                await query.edit_message_text("❌ The server took too long to respond. Please try again later.")
+                await query.edit_message_text(" The server took too long to respond. Please try again later.")
                 context.user_data['processing'] = False
                 return ConversationHandler.END
 
             except Exception as e:
                 logger.error(f"Error in confirm_file: {e}")
-                await query.edit_message_text(text="❌ An unexpected error occurred. Please try again later.")
+                await query.edit_message_text(text=" An unexpected error occurred. Please try again later.")
                 context.user_data['processing'] = False
                 if os.path.exists(file_path):
                     os.remove(file_path)
@@ -419,13 +419,13 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
         except Exception as e:
             logger.error(f"Error in confirm_file: {e}")
-            await query.edit_message_text(text="❌ An unexpected error occurred. Please try again later.")
+            await query.edit_message_text(text=" An unexpected error occurred. Please try again later.")
             context.user_data['processing'] = False
             if os.path.exists(file_path):
                 os.remove(file_path)
             return ConversationHandler.END
     else:
-        await query.edit_message_text("❌ Operation cancelled. Use /crypt to try again.")
+        await query.edit_message_text(" Operation cancelled. Use /crypt to try again.")
         context.user_data['processing'] = False
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -435,7 +435,7 @@ async def confirm_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if 'processing' in context.user_data and context.user_data['processing']:
-        await update.message.reply_text("⚠️ A crypt process is already running. Please wait until it completes or cancel it.")
+        await update.message.reply_text(" A crypt process is already running. Please wait until it completes or cancel it.")
         return
 
     user_id = update.effective_user.id
@@ -443,10 +443,10 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     if expiry_date:
         await update.message.reply_text(
-            f"✅ Your premium subscription is valid until {expiry_date.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            f" Your premium subscription is valid until {expiry_date.strftime('%Y-%m-%d %H:%M:%S')} UTC"
         )
     else:
-        await update.message.reply_text("⚠️ You do not have a valid premium subscription.")
+        await update.message.reply_text(" You do not have a valid premium subscription.")
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
@@ -454,49 +454,17 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.error(f'Error: {context.error} caused by update: {update}')
         if update and update.message:
             await update.message.reply_text(
-                "❌ An error occurred. Please try again or use /crypt to start over."
+                " An error occurred. Please try again or use /crypt to start over."
             )
     except Exception as e:
         logger.error(f"Error in error handler: {e}")
 
-def encrypt_bin_file(file_path: str) -> str:
-
-    key = "MyFixedEncryptionKey".encode('utf-8')
-
-    if len(key) > 16:
-        key = key[:16]
-    elif len(key) < 16:
-        key = key + b'\x00' * (16 - len(key))
-
-    iv = key[:16]
-    encrypted_file_path = os.path.join("converted", f"loader_encrypted_{random.randint(1000, 9999)}.bin")
-
-    with open(file_path, "rb") as file:
-        file_data = file.read()
-
-    padder = padding.PKCS7(algorithms.AES.block_size).padder()
-    padded_data = padder.update(file_data) + padder.finalize()
-
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-    encryptor = cipher.encryptor()
-    encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
-
-    with open(encrypted_file_path, "wb") as encrypted_file:
-        encrypted_file.write(encrypted_data)
-
-    return encrypted_file_path
-
-async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
-    await update.message.reply_text(
-        "For any inquiries or support, please contact us at: @Nexcyte, @adbosts"
-    )
 
 # Command handler for 'purchase'
 async def purchase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
  
     keyboard = [
-        [InlineKeyboardButton("🛒 Purchase", url="https://t.me/adbosts")]
+        [InlineKeyboardButton(" Purchase", url="https://t.me/adbosts")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -532,7 +500,7 @@ def main():
         conv_handler = ConversationHandler(
             entry_points=[
                 CommandHandler('crypt', crypt),  # Handle /crypt command
-                MessageHandler(filters.Text(['🔐 Start Encrypt']), crypt)  # Handle menu button
+                MessageHandler(filters.Text([' Start Encrypt']), crypt)  # Handle menu button
             ],
             states={
                 WAITING_FOR_FILE: [MessageHandler(filters.Document.ALL, handle_file)],  # Handle file uploads
