@@ -1,5 +1,5 @@
-requests
 streamlit
+requests
 python-telegram-bot
 pymongo
 cryptography
