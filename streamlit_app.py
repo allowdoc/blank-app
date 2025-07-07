@@ -70,7 +70,6 @@ MAX_RETRIES = 3
 
 # Database functions
 async def is_premium_user(user_id: int) -> bool:
-    """Check if user has premium access."""
     try:
         user = users_collection.find_one({'user_id': user_id})
         if not user:
